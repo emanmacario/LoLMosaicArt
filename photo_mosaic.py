@@ -18,7 +18,7 @@ def get_image_filenames():
     return filenames
 
 
-def preprocess(image, M, N):
+def preprocess(image, M=30, N=18):
     """
     Crops a PIL image to ensure that its width and height
     in pixels are a multiple of M and N respectively
@@ -54,7 +54,7 @@ def get_avg_rgb(image):
     return averages
 
 
-def split(image, M=15, N=9): # DEFAULT M=30, N=18
+def split(image, M=30, N=18):  # DEFAULT M=30, N=18
     """
     Given PIL image, returns a generator of m*n images
     :param image: PIL image
@@ -80,7 +80,7 @@ def split(image, M=15, N=9): # DEFAULT M=30, N=18
             total += 1
             yield image.crop((left, upper, right, lower))
 
-    # print(total)
+    print("Total cropped images creating input: %d", total)
 
 
 def euclidean_distance(rgb1, rgb2):
@@ -104,6 +104,7 @@ def process_base_images():
     total = len(filenames)
     complete = 0
 
+    print("Calculating average RGB values for base images...")
     for f in filenames:
         im = Image.open('images/' + f)
         base_rgb_avgs[f] = get_avg_rgb(im)
@@ -115,15 +116,6 @@ def process_base_images():
     # TODO: Write to JSON to avoid long processing times
 
     return base_rgb_avgs
-
-
-def main():
-    image = Image.open('images/Aatrox_0.jpg')
-    width, height = image.size
-    print(width, height)
-
-    get_avg_rgb(image)
-
 
 
 def index_image(image, base_rgb_avgs):
@@ -145,21 +137,24 @@ def index_image(image, base_rgb_avgs):
     return index
 
 
-
-
-def index_split_images(image, base_rgb_avs):
+def index_split_images(image, base_rgb_avgs, M=30, N=18):
     """
     For each image in the split, assign a base image
     with the closest average RBG value to it
     :return: List of base image filenames
     """
+    print("Starting indexing process...")
+    complete = 0
     index = []
     for im in split(image):
+        if complete % 25 == 0:
+            print("%4d/%4d" % (complete, M*N))
         index.append(index_image(im, base_rgb_avgs))
+        complete += 1
     return index
 
 
-def generate_mosaic(image, index, M=15, N=9):
+def generate_mosaic(image, index, M=30, N=18):
     image = preprocess(image)
     width, height = image.size
 
@@ -173,7 +168,7 @@ def generate_mosaic(image, index, M=15, N=9):
     # by using the index as a reference
     for i in range(M):
         # Create a new row
-        row = Image.new('RGB', (width*9, height))
+        row = Image.new('RGB', (width*N, height))
         for j in range(N):
             # Append a base image to the row
             im = Image.open('images/' + index[n])
@@ -198,16 +193,28 @@ def print_resolutions():
     print(resolutions)
 
 
+def main():
+    image = Image.open('images/Aatrox_0.jpg')
+    width, height = image.size
+    print(width, height)
+
+    get_avg_rgb(image)
+
+
 if __name__ == "__main__":
-    """
-    im = Image.open('images/Aatrox_0.jpg')
-    width, height = im.size
-    print(width)
-    print(height)
-    print(len(get_image_filenames()))
-    """
+    # Open and preprocess the input image
+    input_file = 'Ahri_7.jpg'
+    input_im = Image.open('images/' + input_file)
+    preprocessed_input_im = preprocess(input_im)
 
-
+    # Process the base images for the mosaic
     base_rgb_avgs = process_base_images()
-    print(len(base_rgb_avgs))
-    print(base_rgb_avgs)
+
+    # Index the cropped sections of the input image
+    index = index_split_images(preprocessed_input_im, base_rgb_avgs)
+
+    # Finally, generate the image mosaic
+    generate_mosaic(preprocessed_input_im, index)
+
+
+# Done!
