@@ -1,4 +1,6 @@
 API_KEY.py
 .idea/
 images/
+venv/
+*.json
 
